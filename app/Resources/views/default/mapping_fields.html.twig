@@ -1,0 +1,74 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+
+<script>
+$(document).ready(function () {
+    $("select").change(function () {
+        var $this = $(this);
+        var prevVal = $this.data("prev");
+        var otherSelects = $("select").not(this);
+        otherSelects.find("option[value=" + $(this).val() + "]").attr('disabled', true);
+        if (prevVal) {
+            otherSelects.find("option[value=" + prevVal + "]").attr('disabled', false);
+        }
+
+        $this.data("prev", $this.val());
+    });
+});
+</script>
+
+<div class="container">
+
+  {% if app.session.flashBag.has('danger') %}
+    <div class="row">
+      <div class="col-md-6 col-md-offset-3">
+        <div class="alert alert-danger">
+            {% for msg in app.session.flashBag.get('danger') %}
+                {{ msg }}
+            {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+  
+  <form class="form-group" action="{{ path('store_records') }}" method="post">
+    <input type="hidden" name="name" value="{{ name }}">
+    <h2>Mapowanie pól</h2>
+    <p>Wybierz jakim polom w tabeli mają odpowiadać pola w Twoim pliku .csv. Pola wymagane to "Username", "Surname" oraz "GivenName".</p>
+    <table class="table">
+      <thead>
+        <th>Nazwa pola w pliku CSV</th>
+        <th>Nazwa pola w tabeli</th>
+      </thead>
+        {% for key, value in results|first %}
+        <tr>
+          <td>{{ key }}</td>
+          <td>
+            <select name="{{ key }}" class="form-control">
+              <option disabled selected value> -- Wybierz nazwę pola w tabeli -- </option>
+              <option value="Number">Number</option>
+              <option value="Gender">Gender</option>
+              <option value="NameSet">NameSet</option>
+              <option value="Title">Title</option>
+              <option value="GivenName">GivenName</option>
+              <option value="MiddleInitial">MiddleInitial</option>
+              <option value="Surname">Surname</option>
+              <option value="StreetAddress">StreetAddress</option>
+              <option value="City">City</option>
+              <option value="State">State</option>
+              <option value="ZipCode">ZipCode</option>
+              <option value="Country">Country</option>
+              <option value="EmailAddress">EmailAddress</option>
+              <option value="Username">Username</option>
+              <option value="Password">Password</option>
+              <option value="BrowserUserAgent">BrowserUserAgent</option>
+            </select>
+          </td>
+        </tr>
+        {% endfor %}
+    </table>
+    <input type="submit" value="Importuj" class="btn btn-primary">
+  </form>
+</div>
+{% endblock %}

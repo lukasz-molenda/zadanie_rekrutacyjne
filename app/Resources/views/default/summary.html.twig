@@ -1,0 +1,12 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+<div class="container">
+  <div class="jumbotron text-center">
+    <p>Dodanie rekordów do bazy trwało {{ time }} s.</p>
+    <p>Poprawnie wprowadzonych rekordów: {{ correct }}</p>
+    <p>Rekordów niewprowadzonych: {{ incorrect }}.</p>
+    <a href="{{ path('homepage') }}">Powrót na stronę główną</a>
+  </div>
+</div>
+{% endblock %}
