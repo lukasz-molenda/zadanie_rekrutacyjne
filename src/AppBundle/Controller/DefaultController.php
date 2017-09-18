@@ -8,6 +8,10 @@ use Symfony\Component\HttpFoundation\Request;
 use League\Csv\Reader;
 use League\Csv\Writer;
 use AppBundle\Entity\Csv;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\SubmitType;
+use Symfony\Component\Form\Extension\Core\Type\HiddenType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 
 class DefaultController extends Controller
 {
@@ -36,6 +40,26 @@ class DefaultController extends Controller
       $file = $this->get('kernel')->getRootDir() . "/../web/uploads/csv/" . $name;
       $reader = Reader::createFromPath($file);
       $header = $reader->fetchOne();
+
+      $em = $this->getDoctrine()->getManager();
+      $fieldNames = array_flip($em->getClassMetadata('AppBundle\Entity\Csv')->getFieldNames());
+      foreach ($fieldNames as $key => $value) {
+        $fieldNames[$key] = $key;
+      }
+
+      $form1 = $this->createFormBuilder($header)->setAction($this->generateUrl('map_fields', ['csv_name' => $name]));
+      foreach ($header as $key => $value) {
+        $newValue = trim(json_encode($value));
+        $newValue = str_replace('\ufeff', '', $newValue);
+        $newValue = json_decode($newValue);
+        unset($header[$value]);
+
+        $form1->add($newValue, ChoiceType::class, ['label' => $newValue, 'choices' => $fieldNames, 'placeholder' => '-- Wybierz opcję --', 'required' => false]);
+      }
+      $form1->add('Import', SubmitType::class);
+      $form1 = $form1->getForm();
+      $form1->handleRequest($request);
+
       if (count($header) < 2) {
         $request->getSession()->getFlashBag()->add('danger', 'Plik .csv musi mieć co najmniej 2 kolumny');
         return $this->redirect('/');
@@ -44,57 +68,20 @@ class DefaultController extends Controller
         return $this->redirect('/');
       } else {
         $results = $reader->fetchAssoc();
-        return $this->render('default/mapping_fields.html.twig', ['results' => $results, 'name' => $name]);
+        return $this->render('default/mapping_fields.html.twig', ['results' => $results, 'name' => $name, 'form1' => $form1->createView()]);
       }
     }
 
     /**
-     * @Route("/store_records", name="store_records")
+     * @Route("/map_fields/{csv_name}", name="map_fields")
      */
-    public function storeRecordsAction(Request $request)
+    public function mapFieldsAction(Request $request, $csv_name)
     {
-      if (!ini_get("auto_detect_line_endings")) {
-          ini_set("auto_detect_line_endings", '1');
-      }
-      $data = $request->request->all();
-      if (!in_array('GivenName', $data) || !in_array('Username', $data) || !in_array('Surname', $data)) {
-        $request->getSession()->getFlashBag()->add('danger', 'Brak któregoś z wymaganych pól.');
-        return $this->redirect('/');
-      }
+      $data = $request->request->get('form');
 
-      $name = $data['name'];
+      $name = $csv_name;
       $file = $this->get('kernel')->getRootDir() . "/../web/uploads/csv/" . $name;
       $reader = Reader::createFromPath($file);
-      $header = $reader->fetchOne();
-
-      $temp = [];
-
-      // Create array with keys mapped by user
-      foreach($header as $result) {
-        if (array_key_exists($result, $data)) {
-          $temp[$result] = $data[$result];
-        } else {
-          $temp[$result] = $result;
-        }
-      }
-
-      // Trim BOMs from $temp array keys
-      foreach ($temp as $key => $value) {
-        $newKey = trim(json_encode($key));
-        $newKey = str_replace('\ufeff', '', $newKey);
-        $newKey = json_decode($newKey);
-        unset($temp[$key]);
-        $temp[$newKey] = json_decode(str_replace('\ufeff', '', json_encode($value)));
-      }
-
-      function check_if_value_exists($ownValue, $temp)
-      {
-        foreach ($temp as $key => $value) {
-          if ($value == $ownValue) {
-            return true;
-          }
-        }
-      }
 
       $results = $reader->fetchAssoc();
 
@@ -103,60 +90,60 @@ class DefaultController extends Controller
       $counter = 0;
       $index = 0;
 
+      $new_arr = [];
+
       foreach ($results as $row) {
-        $csv = new Csv();
-        $index += 1;
+        $temp = [];
 
           // Trim BOMs from $row array keys
           foreach ($row as $key => $value) {
-            $newKey = trim(json_encode($key));
+            unset($row[$key]);
+            $newKey = json_encode($key);
             $newKey = str_replace('\ufeff', '', $newKey);
             $newKey = json_decode($newKey);
-            unset($row[$key]);
-            $row[$newKey] = str_replace('\ufeff', '', $value);
-          }
-
-
-          // var_dump($temp);
-
-          // Mapping keys on selected by user
-          if ((check_if_value_exists('GivenName', $temp) == false) || (check_if_value_exists('Surname', $temp) == false) || (check_if_value_exists('Username', $temp) == false)) {
-            $counter += 1;
-          } else {
-            $row['Number'] ? $csv->{'set'.$temp['Number']}($row['Number']) : null;
-            $row['Gender'] ? $csv->{'set'.$temp['Gender']}($row['Gender']) : null;
-            $row['NameSet'] ? $csv->{'set'.$temp['NameSet']}($row['NameSet']) : null;
-            $row['Title'] ? $csv->{'set'.$temp['Title']}($row['Title']) : null;
-            $csv->{'set'.$temp['GivenName']}($row['GivenName']);
-            $row['MiddleInitial'] ? $csv->{'set'.$temp['MiddleInitial']}($row['MiddleInitial']) : null;
-            $csv->{'set'.$temp['Surname']}($row['Surname']);
-            $row['StreetAddress'] ? $csv->{'set'.$temp['StreetAddress']}($row['StreetAddress']) : null;
-            $row['City'] ? $csv->{'set'.$temp['City']}($row['City']) : null;
-            $row['State'] ? $csv->{'set'.$temp['State']}($row['State']) : null;
-            $row['ZipCode'] ? $csv->{'set'.$temp['ZipCode']}($row['ZipCode']) : null;
-            $row['Country'] ? $csv->{'set'.$temp['Country']}($row['Country']) : null;
-            $row['EmailAddress'] ? $csv->{'set'.$temp['EmailAddress']}($row['EmailAddress']) : null;
-            $csv->{'set'.$temp['Username']}($row['Username']);
-            $row['Password'] ? $csv->{'set'.$temp['Password']}($row['Password']) : null;
-            $row['BrowserUserAgent'] ? $csv->{'set'.$temp['BrowserUserAgent']}($row['BrowserUserAgent']) : null;
-
-            $em = $this->getDoctrine()->getManager();
-
-            $em->persist($csv);
-          }
-      }
-            if (isset($em)) {
-              $em->flush();
+            $row[$newKey] = $value;
+            if ($data[$newKey] != "") {
+              $temp[$data[$newKey]] = json_decode(str_replace('\ufeff', '', json_encode($value)));
             }
+          }
+          array_push($new_arr, $temp);
+      }
 
-            $time_end = microtime(true);
-            $time = $time_end - $time_start;
+      foreach ($new_arr as $row) {
+        $csv = new Csv();
+        $index += 1;
 
-            $time = round($time, 2);
-            $incorrect = $counter;
-            $correct = $index - $counter;
+        $em = $this->getDoctrine()->getManager();
+        $fieldNames = $em->getClassMetadata('AppBundle\Entity\Csv')->getFieldNames();
+        foreach ($row as $key => $value) {
+            $csv->{'set'.$key}($value);
+        }
+        $form2 = $this->createFormBuilder($csv);
+        $new_data = [];
+        foreach($row as $key => $value) {
+          $form2->add($key, TextType::class, ['empty_data' => $value, 'required' => false]);
+          $new_data[$key] = $value;
+        }
+        $form2 = $form2->getForm();
+        $form2->submit($new_data);
 
-            return $this->render('default/summary.html.twig', ['time' => $time, 'correct' => $correct, 'incorrect' => $incorrect]);
+        if ($form2->isSubmitted()) {
+          $em = $this->getDoctrine()->getManager();
+          $em->persist($csv);
+        }
+      }
+
+      $em->flush();
+
+      $time_end = microtime(true);
+      $time = $time_end - $time_start;
+
+      $time = round($time, 2);
+      $incorrect = $counter;
+      $correct = $index - $counter;
+
+      return $this->render('default/summary.html.twig', ['time' => $time, 'correct' => $correct, 'incorrect' => $incorrect]);
+
     }
 
 }

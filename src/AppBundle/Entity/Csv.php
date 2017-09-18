@@ -3,6 +3,7 @@
 namespace AppBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * Csv
@@ -26,28 +27,28 @@ class Csv
      *
      * @ORM\Column(name="Number", type="string", nullable=true)
      */
-    private $number;
+    private $number = '';
 
     /**
      * @var string
      *
      * @ORM\Column(name="Gender", type="string", nullable=true)
      */
-    private $gender;
+    private $gender = '';
 
     /**
      * @var string
      *
      * @ORM\Column(name="NameSet", type="string", nullable=true)
      */
-    private $nameSet;
+    private $nameSet = '';
 
     /**
      * @var string
      *
      * @ORM\Column(name="Title", type="string", nullable=true)
      */
-    private $title;
+    private $title = '';
 
     /**
      * @var string
@@ -61,7 +62,7 @@ class Csv
      *
      * @ORM\Column(name="MiddleInitial", type="string", nullable=true)
      */
-    private $middleInitial;
+    private $middleInitial = '';
 
     /**
      * @var string
@@ -75,42 +76,42 @@ class Csv
      *
      * @ORM\Column(name="StreetAddress", type="string", nullable=true)
      */
-    private $streetAddress;
+    private $streetAddress = '';
 
     /**
      * @var string
      *
      * @ORM\Column(name="City", type="string", nullable=true)
      */
-    private $city;
+    private $city = '';
 
     /**
      * @var string
      *
      * @ORM\Column(name="State", type="string", nullable=true)
      */
-    private $state;
+    private $state = '';
 
     /**
      * @var string
      *
      * @ORM\Column(name="ZipCode", type="string", nullable=true)
      */
-    private $zipCode;
+    private $zipCode = '';
 
     /**
      * @var string
      *
      * @ORM\Column(name="Country", type="string", nullable=true)
      */
-    private $country;
+    private $country = '';
 
     /**
      * @var string
      *
      * @ORM\Column(name="EmailAddress", type="string", nullable=true)
      */
-    private $emailAddress;
+    private $emailAddress = '';
 
     /**
      * @var string
@@ -124,14 +125,14 @@ class Csv
      *
      * @ORM\Column(name="Password", type="string", nullable=true)
      */
-    private $password;
+    private $password = '';
 
     /**
      * @var string
      *
      * @ORM\Column(name="BrowserUserAgent", type="string", nullable=true)
      */
-    private $browserUserAgent;
+    private $browserUserAgent = '';
 
     public function getId()
     {
