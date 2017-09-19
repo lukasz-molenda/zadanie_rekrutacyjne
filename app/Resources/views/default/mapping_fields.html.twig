@@ -20,21 +20,22 @@ $(document).ready(function () {
 
 <div class="container">
 
-  {% if app.session.flashBag.has('danger') %}
+  {% for msg in app.flashes('danger') %}
     <div class="row">
-      <div class="col-md-6 col-md-offset-3">
+      <div class="col-md-8 col-md-offset-2">
         <div class="alert alert-danger">
-            {% for msg in app.session.flashBag.get('danger') %}
-                {{ msg }}
-            {% endfor %}
+          {{ msg }}
         </div>
       </div>
     </div>
-  {% endif %}
-
-  {{ form_start(form1) }}
-  {{ form_widget(form1) }}
-  {{ form_end(form1) }}
+  {% endfor %}
+  <div class="col-md-8 col-md-offset-2">
+    <h2>Mapowanie pól z pliku .csv</h2>
+    <p>Wybierz pole w tabeli odpowiadające polu w twoim pliku .csv. Wymagane są pola zmapowane jako "Username", "Surname" oraz "GivenName".</p>
+    {{ form_start(form1) }}
+    {{ form_widget(form1) }}
+    {{ form_end(form1) }}
+  </div>
 
 </div>
 {% endblock %}

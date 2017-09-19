@@ -8,10 +8,14 @@ use Symfony\Component\HttpFoundation\Request;
 use League\Csv\Reader;
 use League\Csv\Writer;
 use AppBundle\Entity\Csv;
+use AppBundle\Form\CsvType;
+use AppBundle\Form\MapFieldsType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\Validator\Validation;
+use Symfony\Component\Validator\Constraints as Assert;
 
 class DefaultController extends Controller
 {
@@ -47,17 +51,8 @@ class DefaultController extends Controller
         $fieldNames[$key] = $key;
       }
 
-      $form1 = $this->createFormBuilder($header)->setAction($this->generateUrl('map_fields', ['csv_name' => $name]));
-      foreach ($header as $key => $value) {
-        $newValue = trim(json_encode($value));
-        $newValue = str_replace('\ufeff', '', $newValue);
-        $newValue = json_decode($newValue);
-        unset($header[$value]);
-
-        $form1->add($newValue, ChoiceType::class, ['label' => $newValue, 'choices' => $fieldNames, 'placeholder' => '-- Wybierz opcję --', 'required' => false]);
-      }
-      $form1->add('Import', SubmitType::class);
-      $form1 = $form1->getForm();
+      // Creating form with raw value from .csv
+      $form1 = $this->createForm(MapFieldsType::class, $header, ['action' => $this->generateUrl('map_fields', ['csv_name' => $name]), 'data' => ['header' => $header, 'fieldNames' => $fieldNames]]);
       $form1->handleRequest($request);
 
       if (count($header) < 2) {
@@ -77,21 +72,18 @@ class DefaultController extends Controller
      */
     public function mapFieldsAction(Request $request, $csv_name)
     {
-      $data = $request->request->get('form');
-
+      $data = $request->request->get('map_fields');
       $name = $csv_name;
       $file = $this->get('kernel')->getRootDir() . "/../web/uploads/csv/" . $name;
       $reader = Reader::createFromPath($file);
-
       $results = $reader->fetchAssoc();
 
       $time_start = microtime(true);
-
       $counter = 0;
       $index = 0;
 
+      // Creating new array with mapped fields
       $new_arr = [];
-
       foreach ($results as $row) {
         $temp = [];
 
@@ -109,6 +101,25 @@ class DefaultController extends Controller
           array_push($new_arr, $temp);
       }
 
+      // Validate new array
+      $validator = Validation::createValidator();
+      $constraint = new Assert\Collection([
+        'givenName' => new Assert\NotBlank,
+        'username' => new Assert\NotBlank,
+        'surname' => new Assert\NotBlank,
+      ]);
+
+      foreach($new_arr as $single) {
+        $violations = $validator->validate($single, $constraint);
+        foreach ($violations as $violation) {
+          if ($violation->getMessage()) {
+            $request->getSession()->getFlashBag()->add('danger', 'Brak zmapowania któregoś z pól: "Username", "Surname", bądź "GivenName"');
+            return $this->redirect('/');
+          }
+        }
+      }
+
+      // Creating form with mapped values and send to db
       foreach ($new_arr as $row) {
         $csv = new Csv();
         $index += 1;
@@ -118,32 +129,29 @@ class DefaultController extends Controller
         foreach ($row as $key => $value) {
             $csv->{'set'.$key}($value);
         }
-        $form2 = $this->createFormBuilder($csv);
+        $form2 = $this->createForm(CsvType::class, $csv, ['data' => ['row' => $row]]);
+
         $new_data = [];
         foreach($row as $key => $value) {
-          $form2->add($key, TextType::class, ['empty_data' => $value, 'required' => false]);
           $new_data[$key] = $value;
         }
-        $form2 = $form2->getForm();
         $form2->submit($new_data);
 
-        if ($form2->isSubmitted()) {
+        if ($form2->isSubmitted() && $form2->isValid()) {
           $em = $this->getDoctrine()->getManager();
           $em->persist($csv);
         }
       }
-
       $em->flush();
 
+      // Generate report
       $time_end = microtime(true);
       $time = $time_end - $time_start;
-
       $time = round($time, 2);
       $incorrect = $counter;
       $correct = $index - $counter;
 
       return $this->render('default/summary.html.twig', ['time' => $time, 'correct' => $correct, 'incorrect' => $incorrect]);
-
     }
 
 }

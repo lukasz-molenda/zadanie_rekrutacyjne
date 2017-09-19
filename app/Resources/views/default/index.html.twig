@@ -3,19 +3,15 @@
 {% block body %}
     <div id="wrapper">
       <div class="container">
-
-        {% if app.session.flashBag.has('danger') %}
+        {% for msg in app.flashes('danger') %}
           <div class="row">
             <div class="col-md-12">
               <div class="alert alert-danger">
-                  {% for msg in app.session.flashBag.get('danger') %}
-                      {{ msg }}
-                  {% endfor %}
+                {{ msg }}
               </div>
             </div>
           </div>
-        {% endif %}
-
+          {% endfor %}
         <form class="form-group" action="{{ path('import_csv') }}" method="post" enctype="multipart/form-data">
           <input type="file" name="file" class="form-control">
           <input type="submit" value="Import" class="btn btn-primary">
